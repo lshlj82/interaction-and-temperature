@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What Temperature Really Is, Interactively</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  box-sizing:border-box;
+  padding-top:env(safe-area-inset-top,0px);
+  padding-bottom:env(safe-area-inset-bottom,0px);
+  --bg:#EDF1F4; --surface:#F8FAFC; --ink:#15202B; --muted:#56636F; --rule:#C5CFD7; --band:#E2E8ED;
+  --a:#C4402B; --b:#2B67D1; --tot:#2E7A57; --acc:#7B3FB0; --gold:#C8901A; --res:#8B98A4;
+  --serif:"Newsreader",Georgia,"Times New Roman",serif;
+  --sans:"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0E151C; --surface:#141D26; --ink:#E3E9EE; --muted:#97A4B0; --rule:#2B3743; --band:#1B2631;
+    --a:#FF7A66; --b:#6E9FF2; --tot:#5CC593; --acc:#B392F0; --gold:#F0C05C; --res:#5B6976;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0E151C; --surface:#141D26; --ink:#E3E9EE; --muted:#97A4B0; --rule:#2B3743; --band:#1B2631;
+  --a:#FF7A66; --b:#6E9FF2; --tot:#5CC593; --acc:#B392F0; --gold:#F0C05C; --res:#5B6976;
+}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--serif);font-size:1.1rem;line-height:1.62;-webkit-font-smoothing:antialiased}
+img,canvas{max-width:100%}
+a{color:var(--acc)}
+:focus-visible{outline:2px solid var(--acc);outline-offset:3px;border-radius:2px}
+.wrap{max-width:1080px;margin:0 auto;padding:0 clamp(1rem,4vw,2.5rem)}
+.prose{max-width:40rem}
+
+header.hero{padding:clamp(2.5rem,7vw,5rem) 0 1.5rem}
+.credit{font-family:var(--sans);font-size:.9rem;color:var(--muted);margin:0 0 1.25rem}
+h1{font-weight:500;font-size:clamp(2.5rem,7.5vw,5.25rem);line-height:.98;letter-spacing:-.025em;margin:0 0 1.25rem;max-width:13ch}
+.lede{font-size:clamp(1.15rem,2.2vw,1.35rem);max-width:37rem;margin:0}
+
+section{padding:clamp(2.5rem,6vw,4rem) 0;border-top:1px solid var(--rule)}
+section:first-of-type{border-top:0;padding-top:1rem}
+h2{font-weight:500;font-size:clamp(1.7rem,3.5vw,2.35rem);line-height:1.1;letter-spacing:-.015em;margin:0 0 1rem}
+h3{font-family:var(--sans);font-weight:600;font-size:1rem;margin:1.75rem 0 .5rem}
+p{margin:0 0 1rem}
+.note{font-size:.95rem;color:var(--muted)}
+
+.eq{display:block;text-align:center;margin:1.25rem 0;overflow-x:auto;overflow-y:hidden;padding:.25rem 0}
+.eq.multi{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;column-gap:2.2em;row-gap:.65rem}
+.boxed.multi{display:inline-flex;flex-wrap:wrap;justify-content:center;align-items:center;column-gap:2em;row-gap:.6rem;max-width:100%}
+.eqp{max-width:100%}
+.multi.chain{column-gap:.35em}
+mjx-container{color:inherit}
+mjx-container[display="true"]{margin:0 !important}
+.stats mjx-container,.legend mjx-container,.cap mjx-container,.ctl small mjx-container{font-size:105%}
+.ctl output mjx-container{font-size:95%}
+.boxed{display:inline-block;border:1.5px solid var(--acc);padding:.5rem 1rem;border-radius:3px}
+
+.fig{display:grid;grid-template-columns:minmax(0,1fr) 17.5rem;gap:1.5rem;align-items:start;margin-top:1.5rem}
+@media (max-width:820px){.fig{grid-template-columns:1fr}}
+.panel{background:var(--surface);border:1px solid var(--rule);border-radius:6px;padding:1rem}
+.canvas-holder{background:var(--surface);border:1px solid var(--rule);border-radius:6px;overflow:hidden}
+canvas{display:block;width:100%}
+
+.ctl{font-family:var(--sans);font-size:.9rem;margin-bottom:1.1rem}
+.ctl:last-child{margin-bottom:0}
+.ctl label{display:flex;justify-content:space-between;align-items:baseline;gap:.75rem;font-weight:500;margin-bottom:.3rem}
+.ctl .lt{flex:1 1 auto}
+.ctl .lbl{display:block;font-weight:500;margin-bottom:.4rem}
+.ctl output{flex:0 0 auto;white-space:nowrap;font-variant-numeric:tabular-nums;color:var(--muted);font-weight:400}
+.ctl small{display:block;color:var(--muted);line-height:1.4;margin-top:.25rem}
+input[type=range]{width:100%;accent-color:var(--acc);margin:0}
+select{font-family:var(--sans);font-size:.9rem;color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:4px;padding:.4rem .5rem;width:100%}
+.btns{display:flex;flex-wrap:wrap;gap:.5rem}
+button{font-family:var(--sans);font-size:.88rem;font-weight:500;color:var(--ink);background:transparent;border:1px solid var(--rule);border-radius:4px;padding:.45rem .8rem;cursor:pointer}
+button:hover{border-color:var(--ink)}
+button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff}
+
+.stats{font-family:var(--sans);font-size:.9rem;display:grid;grid-template-columns:auto auto;gap:.35rem 1rem;margin:0}
+.stats dt{color:var(--muted)}
+.stats dd{margin:0;text-align:right;font-variant-numeric:tabular-nums;font-weight:500;white-space:nowrap}
+.stats .sep{grid-column:1/-1;border-top:1px solid var(--rule);margin:.3rem 0}
+.legend{font-family:var(--sans);font-size:.85rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:1rem;margin:.6rem 0 0;align-items:center}
+.swatch{display:inline-block;width:.75rem;height:.75rem;border-radius:2px;vertical-align:-1px;margin-right:.35rem}
+.swatch.line{height:3px;width:1.1rem;vertical-align:3px;border-radius:0}
+.swatch.dash{height:0;width:1.1rem;vertical-align:3px;border-radius:0;border-top:3px dashed}
+.cap{font-family:var(--sans);font-size:.85rem;color:var(--muted);margin:.5rem .25rem 0}
+.verdict{font-family:var(--sans);font-size:1rem;font-weight:500;margin:.85rem 0 0;max-width:40rem}
+.big{font-size:clamp(2.2rem,5.5vw,3.2rem);line-height:1;font-weight:500;letter-spacing:-.02em;font-variant-numeric:tabular-nums;margin:.1rem 0 .3rem}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:1rem;margin-top:1.25rem}
+@media (max-width:700px){.two{grid-template-columns:1fr}}
+
+footer{border-top:1px solid var(--rule);padding:2rem 0 3rem;font-family:var(--sans);font-size:.9rem;color:var(--muted)}
+footer p{margin:0 0 .4rem}
+</style>
+<script>
+window.MathJax = {
+  tex: { inlineMath: [['\\(','\\)']], displayMath: [['\\[','\\]']] },
+  svg: { fontCache: 'global' },
+  options: { enableMenu: false }
+};
+</script>
+<script defer src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <p class="credit">An interactive demo created by Claude Opus 5.5, based on the lecture notes by Sang Hoon Lee (Statistical Physics 1, Chapter 3, Interactions and Implications, Sections 3.1 to 3.3)</p>
+  <h1>What Temperature Really Is</h1>
+  <p class="lede">Temperature is the thing that is equal for two objects in thermal equilibrium. Entropy is the thing that is maximized there. Put the two together and temperature gets its real definition, one that even allows temperatures below absolute zero.</p>
+</header>
+
+<!-- ============ DEFINITION ============ -->
+<section id="definition" aria-labelledby="h-def">
+  <h2 id="h-def">Temperature from entropy</h2>
+  <div class="prose">
+    <p>By the second law, two objects in thermal equilibrium have reached the maximum possible total entropy. Operationally (Section 1.1), they are also at the same temperature. Take two Einstein solids, \(N_A = 300\) and \(N_B = 200\), sharing \(q_{\text{total}} = 100\) units of energy, with \(S_{\text{total}} = S_A + S_B\). At equilibrium (\(q_A = 60\)) the total entropy is at its maximum, so</p>
+    <div class="eq multi chain"><span class="eqp">\( \displaystyle \frac{\partial S_{\text{total}}}{\partial U_A} = \frac{\partial S_A}{\partial U_A} + \frac{\partial S_B}{\partial U_A} = 0 \)</span><span class="eqp">\( \displaystyle \Longrightarrow\; \frac{\partial S_A}{\partial U_A} = \frac{\partial S_B}{\partial U_B} \)</span></div>
+    <p>using \(dU_A = -dU_B\). Away from equilibrium, energy flowing from B to A raises the total entropy if A’s entropy gains more than B’s loses, so it happens spontaneously: energy tends to flow into the object with the steeper \(S\)-versus-\(U\) graph, which “wants” energy, and out of the one with the shallower graph, which doesn’t “mind” losing some. Steep means cold and shallow means hot, which gives the real definition of temperature:</p>
+    <div class="eq"><span class="boxed">\( \displaystyle \frac{1}{T} \equiv \left(\frac{\partial S}{\partial U}\right)_{N,V} \)</span></div>
+    <p>(the units work out because \(S\) carries \(k_{\mathrm{B}}\)). Drag \(q_A\) to see both slopes.</p>
+  </div>
+  <div class="fig">
+    <div>
+      <div class="canvas-holder"><canvas id="sCanvas" aria-label="Entropies of solids A and B and their total versus the energy in A, with tangent lines"></canvas></div>
+      <div class="legend">
+        <span><span class="swatch line" style="background:var(--a)"></span>\(S_A\)</span>
+        <span><span class="swatch line" style="background:var(--b)"></span>\(S_B\)</span>
+        <span><span class="swatch line" style="background:var(--tot)"></span>\(S_{\text{total}}\)</span>
+      </div>
+      <p class="verdict" id="sVerdict"></p>
+    </div>
+    <div class="panel">
+      <div class="ctl">
+        <label for="qA"><span class="lt">Energy in A, \(q_A\)</span> <output id="qAOut"></output></label>
+        <input type="range" id="qA" min="1" max="99" step="1" value="12">
+      </div>
+      <div class="ctl btns"><button type="button" class="primary" id="sFlow">Let the energy flow</button></div>
+      <dl class="stats">
+        <dt>\(k_{\mathrm{B}}T_A/\varepsilon\)</dt><dd id="tA">–</dd>
+        <dt>\(k_{\mathrm{B}}T_B/\varepsilon\)</dt><dd id="tB">–</dd>
+        <dt class="sep"></dt>
+        <dt>\(S_{\text{total}}/k_{\mathrm{B}}\)</dt><dd id="sT">–</dd>
+      </dl>
+      <p class="cap" style="margin:.75rem 0 0">\(T = \Delta U/\Delta S\) by centered differences, as in the lecture’s table, from exact multiplicities. (The lecture’s 0.83 for \(T_B\) at \(q_A = 12\) comes from the table’s rounded entropies; the exact value is 0.85.)</p>
+    </div>
+  </div>
+
+  <h3>Money, happiness, and generosity</h3>
+  <div class="prose">
+    <p>The textbook offers a social analogy: energy is money, entropy is happiness, and temperature is generosity. A “normal” person is happier with more money but more generous as they get more, since each extra unit adds less happiness. A “miserly” person’s happiness rises faster and faster, so they grow less generous; an “enlightened” one is happier as they lose money. Two miserly systems can satisfy \(\partial S_A/\partial U_A = \partial S_B/\partial U_B\), but at a minimum of the total entropy, so the equilibrium is unstable: a small perturbation drives them away from it (Problem 3.4).</p>
+  </div>
+  <div class="canvas-holder" style="margin-top:1rem"><canvas id="anaCanvas" aria-label="Entropy versus energy for normal, miserly, and enlightened systems"></canvas></div>
+</section>
+
+<!-- ============ USEFULNESS ============ -->
+<section id="useful" aria-labelledby="h-use">
+  <h2 id="h-use">Putting the definition to work</h2>
+  <div class="prose">
+    <p>For a large Einstein solid with \(q \gg N\), \(S = Nk_{\mathrm{B}}[\ln(q/N) + 1]\) with \(U = q\varepsilon\), so \(1/T = Nk_{\mathrm{B}}/U\), which recovers the equipartition result \(U = Nk_{\mathrm{B}}T\) (two degrees of freedom per oscillator). For a monatomic ideal gas, the Sackur–Tetrode equation gives \(S = Nk_{\mathrm{B}}\ln U^{3/2} + \ldots\), so \(U = \tfrac32 Nk_{\mathrm{B}}T\). In the opposite, quantum limit \(q \ll N\), \(\Omega \approx (eN/q)^q\) gives (Problem 3.5)</p>
+    <div class="eq">\[ U = N\varepsilon\,e^{-\varepsilon/k_{\mathrm{B}}T} \qquad (q \ll N) \]</div>
+    <p>a first appearance of the Boltzmann factor \(e^{-\varepsilon/k_{\mathrm{B}}T}\). Applying \(1/T = \partial S/\partial U\) directly to the exact multiplicity of a large Einstein solid connects the two limits:</p>
+  </div>
+  <div class="fig">
+    <div>
+      <div class="canvas-holder"><canvas id="uCanvas" aria-label="Energy of an Einstein solid versus temperature, with the high- and low-temperature limits"></canvas></div>
+      <div class="legend">
+        <span><span class="swatch line" style="background:var(--acc)"></span>From the exact multiplicity</span>
+        <span><span class="swatch dash" style="border-color:var(--a)"></span>\(U = Nk_{\mathrm{B}}T\) (\(q \gg N\))</span>
+        <span><span class="swatch dash" style="border-color:var(--b)"></span>\(U = N\varepsilon\,e^{-\varepsilon/k_{\mathrm{B}}T}\) (\(q \ll N\))</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ctl"><span class="lbl">Show</span>
+        <div class="btns"><button type="button" data-uv="U" aria-pressed="true">Energy</button><button type="button" data-uv="C">Heat capacity</button></div>
+      </div>
+      <div class="ctl">
+        <label for="uT"><span class="lt">\(k_{\mathrm{B}}T/\varepsilon\)</span> <output id="uTOut"></output></label>
+        <input type="range" id="uT" min="0.05" max="3" step="0.01" value="0.5">
+      </div>
+      <dl class="stats">
+        <dt>\(q/N\), exact</dt><dd id="uE">–</dd>
+        <dt>\(q \gg N\) limit</dt><dd id="uH">–</dd>
+        <dt>\(q \ll N\) limit</dt><dd id="uL">–</dd>
+      </dl>
+      <p class="cap" style="margin:.75rem 0 0">With \(\Omega = \binom{q+N-1}{q}\), \(\partial S/\partial q = k_{\mathrm{B}}\ln(1 + N/q)\) for large \(N\), so \(q/N = 1/(e^{\varepsilon/k_{\mathrm{B}}T} - 1)\). The high-temperature line is offset from it by \(\tfrac12\) at large \(T\), since the zero-point energy is not counted.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ ENTROPY AND HEAT ============ -->
+<section id="heat" aria-labelledby="h-heat">
+  <h2 id="h-heat">Entropy and heat</h2>
+  <div class="prose">
+    <p>Heat capacity is measurable, \(C_V = (\partial U/\partial T)_{N,V}\): \(Nk_{\mathrm{B}}\) for an Einstein solid with \(q \gg N\) and \(\tfrac32 Nk_{\mathrm{B}}\) for a monatomic ideal gas, matching experiments on solids at high temperature and dilute monatomic gases. The general procedure is to find \(\Omega\), take its logarithm, differentiate for \(T\), solve for \(U(T)\), and differentiate again for \(C\). For most systems you get stuck at the first step. Running it backward instead, from \(1/T = (\partial S/\partial U)_{N,V}\) at constant volume (no work):</p>
+    <div class="eq multi"><span class="eqp">\( \displaystyle dS = \frac{dU}{T} = \frac{Q}{T}, \)</span><span class="eqp">\( \displaystyle \Delta S = \int_{T_i}^{T_f}\frac{C_V}{T}\,dT \)</span></div>
+    <p>(the first also holds when the volume changes, as long as the process is quasistatic). Historically, \(dS = Q/T\) was the original definition of entropy, due to Rudolf Clausius. As \(T \to 0\), a system settles into its unique lowest-energy state with \(\Omega = 1\) and \(S = 0\) (in practice there may be some residual entropy), and \(C_V \to 0\) so that the integral converges: the <strong>third law of thermodynamics</strong>. The constant \(C_V\) of the classical limit must fail at low temperature as degrees of freedom freeze out, as the Einstein solid’s heat capacity above shows.</p>
+  </div>
+  <div class="two">
+    <div class="panel">
+      <h3 style="margin-top:0">Heating water</h3>
+      <div class="ctl">
+        <label for="wM"><span class="lt">Mass</span> <output id="wMOut"></output></label>
+        <input type="range" id="wM" min="10" max="1000" step="10" value="200">
+      </div>
+      <div class="ctl">
+        <label for="wT1"><span class="lt">From</span> <output id="wT1Out"></output></label>
+        <input type="range" id="wT1" min="1" max="99" step="1" value="20">
+      </div>
+      <div class="ctl">
+        <label for="wT2"><span class="lt">To</span> <output id="wT2Out"></output></label>
+        <input type="range" id="wT2" min="1" max="100" step="1" value="100">
+      </div>
+      <div class="big" id="wS">–</div>
+      <p class="cap" style="margin:0" id="wNote"></p>
+    </div>
+    <div class="panel">
+      <h3 style="margin-top:0">Heat flowing between two objects</h3>
+      <div class="ctl">
+        <label for="hA"><span class="lt">\(T_A\)</span> <output id="hAOut"></output></label>
+        <input type="range" id="hA" min="100" max="800" step="10" value="500">
+      </div>
+      <div class="ctl">
+        <label for="hB"><span class="lt">\(T_B\)</span> <output id="hBOut"></output></label>
+        <input type="range" id="hB" min="100" max="800" step="10" value="300">
+      </div>
+      <div class="ctl">
+        <label for="hQ"><span class="lt">Heat from A to B</span> <output id="hQOut"></output></label>
+        <input type="range" id="hQ" min="-3000" max="3000" step="100" value="1500">
+      </div>
+      <dl class="stats">
+        <dt>\(\Delta S_A = -Q/T_A\)</dt><dd id="hSA">–</dd>
+        <dt>\(\Delta S_B = +Q/T_B\)</dt><dd id="hSB">–</dd>
+        <dt>\(\Delta S_{\text{total}}\)</dt><dd id="hST">–</dd>
+      </dl>
+      <p class="verdict" id="hV" style="font-size:.9rem"></p>
+    </div>
+  </div>
+
+  <h3>Erasing information costs entropy</h3>
+  <div class="prose">
+    <p>Problem 3.16. A bit of memory has two states. Erasing a gigabyte (about \(8 \times 10^9\) bits) maps \(2^{8\times10^9}\) possible states onto one, so the computer’s entropy decreases by about \(8\times10^9 k_{\mathrm{B}}\ln 2\), and at least that much entropy must be dumped into the environment, carried by heat \(Q = T\Delta S\): <strong>Landauer’s principle</strong>, verified experimentally in 2012.</p>
+  </div>
+  <div class="fig">
+    <div class="panel">
+      <div class="ctl">
+        <label for="lSize"><span class="lt">Amount erased</span></label>
+        <select id="lSize">
+          <option value="8">1 byte</option>
+          <option value="8192">1 kilobyte (1024 bytes)</option>
+          <option value="8388608">1 megabyte</option>
+          <option value="8589934592" selected>1 gigabyte</option>
+          <option value="8796093022208">1 terabyte</option>
+        </select>
+      </div>
+      <div class="ctl">
+        <label for="lT"><span class="lt">Temperature of the environment</span> <output id="lTOut"></output></label>
+        <input type="range" id="lT" min="1" max="400" step="1" value="300">
+      </div>
+    </div>
+    <div class="panel">
+      <dl class="stats">
+        <dt>Entropy, \(N_{\text{bits}}k_{\mathrm{B}}\ln 2\)</dt><dd id="lS">–</dd>
+        <dt>Minimum heat, \(T\Delta S\)</dt><dd id="lQ">–</dd>
+        <dt>In electron volts</dt><dd id="lE">–</dd>
+        <dt>Per bit</dt><dd id="lB">–</dd>
+      </dl>
+      <p class="cap" style="margin:.75rem 0 0">Tiny by everyday standards, though large in electron volts. The lecture’s \(2.3 \times 10^{-11}\) J uses \(8 \times 10^9\) bits; a gigabyte of \(2^{30}\) bytes gives \(2.5 \times 10^{-11}\) J.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PARAMAGNETISM ============ -->
+<section id="para" aria-labelledby="h-para">
+  <h2 id="h-para">Paramagnetism and negative temperature</h2>
+  <div class="prose">
+    <p>A more complicated example, where equipartition doesn’t apply at all: a two-state paramagnet of \(N\) noninteracting spin-½ particles in a magnetic field \(B\) along \(+z\). Each dipole is up, with energy \(-\mu B\), or down, with \(+\mu B\), so</p>
+    <div class="eq multi"><span class="eqp">\( \displaystyle U = \mu B(N_\downarrow - N_\uparrow) = \mu B(N - 2N_\uparrow), \)</span><span class="eqp">\( \displaystyle M = \mu(N_\uparrow - N_\downarrow) = -\frac{U}{B}, \)</span><span class="eqp">\( \displaystyle \Omega(N_\uparrow) = \binom{N}{N_\uparrow} \)</span></div>
+    <p>just like coins. Below, \(N = 100\), worked out numerically as in the lecture’s table: \(T = \Delta U/\Delta S\) and \(C = \Delta U/\Delta T\) by centered differences.</p>
+  </div>
+  <div class="fig">
+    <div>
+      <div class="canvas-holder"><canvas id="pmCanvas" aria-label="Entropy of a 100-spin paramagnet versus energy, with the tangent at the chosen state"></canvas></div>
+      <div class="canvas-holder" style="margin-top:.75rem"><canvas id="spinCanvas" aria-label="The 100 dipoles in the chosen state"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="ctl">
+        <label for="nUp"><span class="lt">Dipoles up, \(N_\uparrow\)</span> <output id="nUpOut"></output></label>
+        <input type="range" id="nUp" min="0" max="100" step="1" value="98">
+      </div>
+      <dl class="stats">
+        <dt>\(U/\mu B\)</dt><dd id="pU">–</dd>
+        <dt>\(M/N\mu\)</dt><dd id="pM">–</dd>
+        <dt>\(\Omega\)</dt><dd id="pO">–</dd>
+        <dt>\(S/k_{\mathrm{B}}\)</dt><dd id="pS">–</dd>
+        <dt>\(k_{\mathrm{B}}T/\mu B\)</dt><dd id="pT">–</dd>
+        <dt>\(C/Nk_{\mathrm{B}}\)</dt><dd id="pC">–</dd>
+      </dl>
+      <p class="verdict" id="pV" style="font-size:.9rem"></p>
+    </div>
+  </div>
+  <div class="prose" style="margin-top:1.5rem">
+    <p>At the minimum energy, all dipoles up, the \(S\)-versus-\(U\) graph is very steep: a low temperature, with a strong tendency to absorb energy. The entropy peaks at \(U = 0\) (\(N_\uparrow = N_\downarrow\)), where the system couldn’t care less whether its energy increases a bit, so \(T = \infty\). Beyond that, adding energy <em>lowers</em> the entropy, so the slope and the temperature are negative. A system at \(T < 0\) will spontaneously give energy to any object whose entropy-energy graph has a positive slope: negative temperatures are hotter than all positive ones. This can only happen when the total energy is bounded, unlike an Einstein solid; nuclear paramagnets in certain crystals, where the nuclear spins hardly exchange energy with the lattice vibrations, have been prepared at negative temperatures experimentally. Temperature is less fundamental than entropy: it characterizes a system’s willingness to give up energy.</p>
+  </div>
+
+  <h3>The analytic solution</h3>
+  <div class="prose">
+    <p>For large \(N\), Stirling’s approximation gives \(S/k_{\mathrm{B}} = N\ln N - N_\uparrow\ln N_\uparrow - (N - N_\uparrow)\ln(N - N_\uparrow)\), and with \(\partial N_\uparrow/\partial U = -1/2\mu B\) (Problem 3.19),</p>
+    <div class="eq multi"><span class="eqp">\( \displaystyle \frac1T = \frac{k_{\mathrm{B}}}{2\mu B}\ln\frac{N - U/\mu B}{N + U/\mu B}, \)</span><span class="eqp">\( \displaystyle U = -N\mu B\tanh\frac{\mu B}{k_{\mathrm{B}}T}, \)</span><span class="eqp">\( \displaystyle C_B = Nk_{\mathrm{B}}\frac{(\mu B/k_{\mathrm{B}}T)^2}{\cosh^2(\mu B/k_{\mathrm{B}}T)} \)</span></div>
+    <p>so \(T\) and \(U\) always have opposite signs, and \(M = N\mu\tanh(\mu B/k_{\mathrm{B}}T)\). With \(x = \mu B/k_{\mathrm{B}}T\), the entropy is \(S = Nk_{\mathrm{B}}[\ln(2\cosh x) - x\tanh x]\) (Problem 3.23), from \(Nk_{\mathrm{B}}\ln 2 \approx 0.693\,Nk_{\mathrm{B}}\) at \(T \to \infty\) down to 0 as \(T \to 0\). The heat capacity vanishes at both ends: only a finite amount of energy is needed to reach a very high temperature. The marker shows the state chosen above.</p>
+  </div>
+  <div class="two">
+    <div>
+      <div class="canvas-holder"><canvas id="aT" aria-label="Temperature versus energy"></canvas></div>
+      <p class="cap">\(k_{\mathrm{B}}T/\mu B\) versus \(U/N\mu B\): positive below zero energy, negative above.</p>
+    </div>
+    <div>
+      <div class="canvas-holder"><canvas id="aM" aria-label="Magnetization versus temperature, including negative temperatures"></canvas></div>
+      <p class="cap">\(M/N\mu\) versus \(k_{\mathrm{B}}T/\mu B\): saturated at \(T = 0^+\), randomized at \(T \to \pm\infty\), and the mirror image at \(T < 0\).</p>
+    </div>
+    <div>
+      <div class="canvas-holder"><canvas id="aC" aria-label="Heat capacity and energy versus temperature"></canvas></div>
+      <p class="cap">\(C_B/Nk_{\mathrm{B}}\) (solid) and \(-U/N\mu B\) (dashed) versus \(k_{\mathrm{B}}T/\mu B\).</p>
+    </div>
+    <div>
+      <div class="canvas-holder"><canvas id="aS" aria-label="Entropy versus x equals mu B over k T"></canvas></div>
+      <p class="cap">\(S/Nk_{\mathrm{B}}\) versus \(x = \mu B/k_{\mathrm{B}}T\): maximum \(\ln 2\) at \(T \to \infty\).</p>
+    </div>
+  </div>
+
+  <h3>Curie’s law</h3>
+  <div class="prose">
+    <p>For electrons, \(\mu\) is the Bohr magneton, \(\mu_B = eh/4\pi m_e = 5.788 \times 10^{-5}\) eV/T. Even in a strong 1 T field, \(\mu B \approx 5.8 \times 10^{-5}\) eV is far below \(k_{\mathrm{B}}T \approx 1/40\) eV at room temperature. With \(\tanh x \approx x\) for small \(x\), \(M \approx N\mu^2B/k_{\mathrm{B}}T\), proportional to \(1/T\): <strong>Curie’s law</strong>, named for Pierre Curie, which holds at high temperature. Atomic nuclei have magnetic moments about 2000 times smaller, so lining up a nuclear paramagnet takes millikelvin temperatures.</p>
+  </div>
+  <div class="fig">
+    <div>
+      <div class="canvas-holder"><canvas id="curCanvas" aria-label="Magnetization versus inverse temperature, exact and Curie's law"></canvas></div>
+      <div class="legend">
+        <span><span class="swatch line" style="background:var(--acc)"></span>\(\tanh(\mu B/k_{\mathrm{B}}T)\)</span>
+        <span><span class="swatch dash" style="border-color:var(--a)"></span>Curie’s law, \(\mu B/k_{\mathrm{B}}T\)</span>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ctl"><span class="lbl">Dipoles</span>
+        <div class="btns"><button type="button" data-dip="e" aria-pressed="true">Electrons</button><button type="button" data-dip="n">Protons (nuclear)</button></div>
+      </div>
+      <div class="ctl">
+        <label for="cB"><span class="lt">Field \(B\)</span> <output id="cBOut"></output></label>
+        <input type="range" id="cB" min="0.1" max="10" step="0.1" value="1">
+      </div>
+      <div class="ctl">
+        <label for="cT"><span class="lt">Temperature</span> <output id="cTOut"></output></label>
+        <input type="range" id="cT" min="-3" max="2.6" step="0.01" value="0">
+      </div>
+      <dl class="stats">
+        <dt>\(\mu B/k_{\mathrm{B}}T\)</dt><dd id="cX">–</dd>
+        <dt>\(M/N\mu\), exact</dt><dd id="cM">–</dd>
+        <dt>Curie’s law</dt><dd id="cC">–</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+</div>
+
+<footer>
+  <div class="wrap">
+    <p>Created by Claude Opus 5.5, based on the lecture notes by Sang Hoon Lee (Statistical Physics 1, Chapter 3, Interactions and Implications, Sections 3.1 to 3.3, with Problems 3.4, 3.5, 3.16, 3.19 and 3.23).</p>
+    <p>Constants: \(k_{\mathrm{B}} = 1.381 \times 10^{-23}\ \mathrm{J/K} = 8.617 \times 10^{-5}\ \mathrm{eV/K}\), \(\mu_B = 5.788 \times 10^{-5}\ \mathrm{eV/T}\). Equations typeset with MathJax.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+"use strict";
+const $ = id => document.getElementById(id);
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let C = {};
+function readColors(){
+  const cs = getComputedStyle(document.documentElement);
+  ['bg','surface','ink','muted','rule','band','a','b','tot','acc','gold','res'].forEach(k => C[k] = cs.getPropertyValue('--'+k).trim());
+}
+readColors();
+const SANS = '"Instrument Sans", system-ui, sans-serif';
+const SERIF = '"Newsreader", Georgia, serif';
+function fit(cv, LW, LH){
+  const w = cv.parentElement.clientWidth || LW, hgt = w*LH/LW;
+  cv.style.height = hgt + 'px';
+  const d = window.devicePixelRatio || 1;
+  cv.width = Math.round(w*d); cv.height = Math.round(hgt*d);
+  const ctx = cv.getContext('2d'); const s = w*d/LW;
+  ctx.setTransform(s,0,0,s,0,0);
+  return ctx;
+}
+function rich(c, x, y, size, parts, align){
+  c.save(); c.textAlign = 'left';
+  const fontOf = st => st==='i' ? 'italic '+size+'px '+SERIF : st==='isub' ? 'italic '+(size*0.7)+'px '+SERIF : (st==='sub'||st==='sup') ? (size*0.7)+'px '+SERIF : st==='s' ? (size*0.88)+'px '+SANS : size+'px '+SERIF;
+  const widths = parts.map(([t,st]) => { c.font = fontOf(st); return c.measureText(t).width; });
+  const total = widths.reduce((a,b)=>a+b,0);
+  let cx = align==='center' ? x-total/2 : align==='right' ? x-total : x;
+  parts.forEach(([t,st],i) => { c.font = fontOf(st); const dy = (st==='sub'||st==='isub') ? size*0.25 : st==='sup' ? -size*0.38 : 0; c.fillText(t, cx, y+dy); cx += widths[i]; });
+  c.restore(); return total;
+}
+const signed = (x,d) => (x<0?'−':'') + Math.abs(x).toFixed(d);
+function sciNum(x, sig){ sig = sig || 2; if (!isFinite(x)) return '∞'; if (x === 0) return '0'; const e = Math.floor(Math.log10(Math.abs(x))); if (e >= -2 && e < 5) return Number(x.toPrecision(sig)).toLocaleString('en-US',{maximumSignificantDigits:sig}); let m = (Math.abs(x)/Math.pow(10,e)).toFixed(sig-1), ee = e; if (parseFloat(m) >= 10){ m = (parseFloat(m)/10).toFixed(sig-1); ee++; } return (x<0?'−':'') + m + ' × 10<sup>' + (ee<0?'−'+(-ee):ee) + '</sup>'; }
+function axes(c, W, H, box, xr, yr, xt, yt, xlab, ylab, xfmt, yfmt){
+  const [L,T,Rr,B] = box;
+  c.clearRect(0,0,W,H); c.fillStyle=C.surface; c.fillRect(0,0,W,H);
+  const X = v => L + (v-xr[0])/(xr[1]-xr[0])*(W-L-Rr), Y = v => H-B - (v-yr[0])/(yr[1]-yr[0])*(H-T-B);
+  c.font='12px '+SANS; c.fillStyle=C.muted; c.textAlign='center';
+  xt.forEach(v => { c.strokeStyle = v===0 ? C.rule : C.band; c.lineWidth=1; c.beginPath(); c.moveTo(X(v),T); c.lineTo(X(v),H-B); c.stroke(); c.fillText(xfmt ? xfmt(v) : (v<0?'−'+Math.abs(v):String(v)), X(v), H-B+16); });
+  c.textAlign='right'; yt.forEach(v => { c.strokeStyle = v===0 ? C.rule : C.band; c.beginPath(); c.moveTo(L,Y(v)); c.lineTo(W-Rr,Y(v)); c.stroke(); c.fillText(yfmt ? yfmt(v) : (v<0?'−'+Math.abs(v):String(v)), L-6, Y(v)+4); });
+  c.fillStyle=C.muted; if (xlab) rich(c, W-Rr-2, H-8, 14, xlab, 'right');
+  if (ylab){ c.save(); c.globalAlpha=0.85; c.fillStyle=C.surface; c.fillRect(L+2, T-2, 170, 20); c.restore(); c.fillStyle=C.muted; rich(c, L+6, T+12, 14, ylab, 'left'); }
+  c.strokeStyle=C.muted; c.lineWidth=1; c.beginPath(); c.moveTo(L,T); c.lineTo(L,H-B); c.lineTo(W-Rr,H-B); c.stroke();
+  return {X, Y};
+}
+const LF = new Float64Array(2001); for (let k=1;k<=2000;k++) LF[k] = LF[k-1] + Math.log(k);
+const lnC = (n, k) => (k < 0 || k > n) ? -Infinity : LF[n] - LF[k] - LF[n-k];
+const kB = 1.380649e-23, eV = 1.602176634e-19, kBeV = 8.617333e-5;
+
+/* ================= TEMPERATURE FROM ENTROPY ================= */
+const NA = 300, NB = 200, QT = 100;
+const SA = q => lnC(q+NA-1, q), SB = q => lnC(q+NB-1, q);
+let qA = 12, flowing = null;
+function tempA(q){ return 2/(SA(q+1) - SA(q-1)); }
+function tempB(q){ return 2/(SB(QT-q+1) - SB(QT-q-1)); }
+function sRender(){
+  $('qAOut').innerHTML = qA + ' (<i>q</i><sub>B</sub> = ' + (QT-qA) + ')';
+  const ta = tempA(qA), tb = tempB(qA);
+  $('tA').textContent = ta.toFixed(2); $('tB').textContent = tb.toFixed(2);
+  $('sT').textContent = (SA(qA) + SB(QT-qA)).toFixed(1);
+  $('sVerdict').textContent = Math.abs(ta - tb) < 0.02 ? 'Equal slopes, equal temperatures: equilibrium, with the total entropy at its maximum.' : ta < tb ? 'A’s graph is steeper, so A is colder: energy flows from B into A, raising the total entropy.' : 'B’s graph is steeper, so B is colder: energy flows from A into B, raising the total entropy.';
+  const c = sCtx; if (!c) return;
+  const W=640, H=390, ax = axes(c, W, H, [52,40,16,40], [0,100], [0,300], [0,20,40,60,80,100], [0,50,100,150,200,250,300], [['q','i'],['A','isub']], [['entropy (units of ','s'],['k','i'],['B','sub'],[')','s']]);
+  // top axis for q_B
+  c.fillStyle=C.muted; c.font='12px '+SANS; c.textAlign='center'; [0,20,40,60,80,100].forEach(v => c.fillText(100-v, ax.X(v), 32)); rich(c, W-16, 14, 13, [['← ','s'],['q','i'],['B','isub'],[' (top axis)','s']], 'right');
+  [[q => SA(q), C.a],[q => SB(QT-q), C.b],[q => SA(q)+SB(QT-q), C.tot]].forEach(([f,col]) => { c.strokeStyle=col; c.lineWidth=2.4; c.beginPath(); for (let q=0;q<=100;q++){ const y = ax.Y(f(q)); q?c.lineTo(ax.X(q),y):c.moveTo(ax.X(q),y); } c.stroke(); });
+  // tangent lines: slope dS/dq = 1/T
+  const tangent = (s0, slope, col) => { c.strokeStyle=col; c.lineWidth=3; c.beginPath(); c.moveTo(ax.X(qA-14), ax.Y(s0 - 14*slope)); c.lineTo(ax.X(qA+14), ax.Y(s0 + 14*slope)); c.stroke(); c.fillStyle=col; c.beginPath(); c.arc(ax.X(qA), ax.Y(s0), 5, 0, 7); c.fill(); };
+  tangent(SA(qA), 1/ta, C.ink); tangent(SB(QT-qA), -1/tb, C.ink);
+  c.fillStyle=C.tot; c.beginPath(); c.arc(ax.X(qA), ax.Y(SA(qA)+SB(QT-qA)), 5, 0, 7); c.fill();
+  c.strokeStyle=C.muted; c.setLineDash([3,4]); c.lineWidth=1; c.beginPath(); c.moveTo(ax.X(60), ax.Y(0)); c.lineTo(ax.X(60), ax.Y(300)); c.stroke(); c.setLineDash([]);
+  c.fillStyle=C.muted; c.textAlign='left'; c.font='12px '+SANS; c.fillText('equilibrium', ax.X(60)+4, ax.Y(10));
+}
+$('qA').addEventListener('input', e => { qA = +e.target.value; flowing = null; sRender(); });
+$('sFlow').addEventListener('click', () => { if (reduceMotion){ qA = 60; $('qA').value = 60; sRender(); return; } flowing = {t:0}; });
+
+/* ---------- analogy sketches ---------- */
+function anaRender(){
+  const c = anaCtx; if (!c) return;
+  const W=900, H=220; c.clearRect(0,0,W,H); c.fillStyle=C.surface; c.fillRect(0,0,W,H);
+  const panels = [['“Normal”', u => Math.sqrt(u), 'more generous as it gets more'],['“Miserly”', u => u*u, 'less generous as it gets more'],['“Enlightened”', u => 1 - u*u*0.9, 'happier as it loses (!)']];
+  panels.forEach(([t,f,cap],k) => {
+    const x0 = 40 + k*290, w = 220, y0 = 30, h = 130;
+    c.strokeStyle=C.muted; c.lineWidth=1; c.beginPath(); c.moveTo(x0, y0); c.lineTo(x0, y0+h); c.lineTo(x0+w, y0+h); c.stroke();
+    c.strokeStyle=C.acc; c.lineWidth=2.6; c.beginPath(); for (let i=0;i<=60;i++){ const u = i/60, v = f(u); const X = x0 + 10 + u*(w-20), Y = y0 + h - 10 - v*(h-25); i?c.lineTo(X,Y):c.moveTo(X,Y); } c.stroke();
+    c.fillStyle=C.ink; c.font='600 14px '+SANS; c.textAlign='center'; c.fillText(t, x0+w/2, 20);
+    c.fillStyle=C.muted; c.font='12px '+SANS; c.fillText(cap, x0+w/2, y0+h+40); c.fillText('energy (money) →', x0+w/2, y0+h+18);
+    c.save(); c.translate(x0-10, y0+h/2); c.rotate(-Math.PI/2); c.fillText('entropy (happiness)', 0, 0); c.restore();
+  });
+}
+
+/* ================= EINSTEIN SOLID U(T) ================= */
+let uT = 0.5, uView = 'U';
+function uRender(){
+  const t = uT, ex = 1/Math.expm1(1/t);
+  $('uTOut').textContent = t.toFixed(2);
+  document.querySelectorAll('[data-uv]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.uv === uView)));
+  const isU = uView === 'U';
+  const fx = x => isU ? 1/Math.expm1(1/x) : Math.exp(1/x)/(x*x*Math.pow(Math.expm1(1/x),2));
+  const fh = x => isU ? x : 1, fl = x => isU ? Math.exp(-1/x) : Math.exp(-1/x)/(x*x);
+  $('uE').textContent = fx(t).toFixed(3); $('uH').textContent = fh(t).toFixed(3); $('uL').textContent = fl(t).toFixed(3);
+  const c = uCtx; if (!c) return;
+  const W=640, H=340, ymax = isU ? 3 : 1.2;
+  const ax = axes(c, W, H, [48,16,16,40], [0,3], [0,ymax], [0,0.5,1,1.5,2,2.5,3], isU ? [0,1,2,3] : [0,0.5,1], [['k','i'],['B','sub'],['T','i'],[' / ','r'],['ε','i']], isU ? [['U','i'],[' / ','r'],['Nε','i'],[' = ','r'],['q','i'],['/','r'],['N','i']] : [['C','i'],[' / ','r'],['Nk','i'],['B','sub']]);
+  c.save(); c.beginPath(); c.rect(48,16,W-64,H-56); c.clip();
+  const curve = (f, col, w, dash) => { c.strokeStyle=col; c.lineWidth=w; c.setLineDash(dash||[]); c.beginPath(); let st=false; for (let i=1;i<=300;i++){ const x = 3*i/300; const v = f(x); if (!isFinite(v)) continue; const y = ax.Y(v); st?c.lineTo(ax.X(x),y):(c.moveTo(ax.X(x),y), st=true); } c.stroke(); c.setLineDash([]); };
+  curve(fh, C.a, 1.8, [6,4]); curve(fl, C.b, 1.8, [6,4]); curve(fx, C.acc, 2.8);
+  c.restore();
+  c.fillStyle=C.acc; c.beginPath(); c.arc(ax.X(t), ax.Y(Math.min(ymax, fx(t))), 5.5, 0, 7); c.fill();
+}
+document.querySelectorAll('[data-uv]').forEach(b => b.addEventListener('click', () => { uView = b.dataset.uv; uRender(); }));
+$('uT').addEventListener('input', e => { uT = +e.target.value; uRender(); });
+
+/* ================= WATER & HEAT FLOW ================= */
+function wRender(){
+  const m = +$('wM').value, T1 = +$('wT1').value, T2v = +$('wT2').value, T2 = Math.max(T2v, T1);
+  if (T2v < T1) $('wT2').value = T1;
+  $('wMOut').textContent = m + ' g'; $('wT1Out').textContent = T1 + ' °C'; $('wT2Out').textContent = T2 + ' °C';
+  const Cw = 4.184*m, dS = Cw*Math.log((T2+273.15)/(T1+273.15));
+  $('wS').textContent = '+' + dS.toFixed(1) + ' J/K';
+  const exp = dS/kB;
+  $('wNote').innerHTML = 'ΔS = C ln(T<sub>f</sub>/T<sub>i</sub>), with C = ' + Math.round(Cw) + ' J/K. The multiplicity grows by a factor of exp(' + (exp > 0 ? sciNum(exp, 2) : '0') + ').';
+}
+['wM','wT1','wT2'].forEach(id => $(id).addEventListener('input', wRender));
+function hRender(){
+  const TA = +$('hA').value, TB = +$('hB').value, Q = +$('hQ').value;
+  $('hAOut').textContent = TA + ' K'; $('hBOut').textContent = TB + ' K'; $('hQOut').textContent = (Q<0?'−':'') + Math.abs(Q) + ' J';
+  const sa = -Q/TA, sb = Q/TB, st = sa + sb;
+  $('hSA').textContent = signed(sa, 2) + ' J/K'; $('hSB').textContent = (sb>=0?'+':'') + signed(sb, 2) + ' J/K'; $('hST').textContent = (st>=0?'+':'') + signed(st, 2) + ' J/K';
+  $('hV').textContent = Q === 0 ? 'No heat, no entropy change.' : TA === TB ? 'Equal temperatures: the entropy doesn’t change, the reversible limit.' : st > 0 ? 'Total entropy increases: this happens spontaneously.' : 'Total entropy would decrease: heat never flows this way on its own.';
+}
+['hA','hB','hQ'].forEach(id => $(id).addEventListener('input', hRender));
+
+/* ================= LANDAUER ================= */
+function lRender(){
+  const bits = +$('lSize').value, T = +$('lT').value, dS = bits*kB*Math.LN2, Q = T*dS;
+  $('lTOut').textContent = T + ' K';
+  $('lS').innerHTML = sciNum(dS, 2) + ' J/K'; $('lQ').innerHTML = sciNum(Q, 2) + ' J'; $('lE').innerHTML = sciNum(Q/eV, 2) + ' eV'; $('lB').innerHTML = sciNum(T*kB*Math.LN2, 2) + ' J';
+}
+$('lSize').addEventListener('change', lRender); $('lT').addEventListener('input', lRender);
+
+/* ================= PARAMAGNET (N = 100, numerical) ================= */
+const PN = 100;
+let nUp = 98;
+const pS = n => lnC(PN, n), pU = n => PN - 2*n;
+function pT(n){ // centered difference T = dU/dS; all up (or all down) is exactly T = 0, as in the lecture's table
+  if (n === PN || n === 0) return 0;
+  const dU = pU(n-1) - pU(n+1), dS = pS(n-1) - pS(n+1);
+  return dS === 0 ? Infinity : dU/dS;
+}
+function pC(n){ if (n <= 0 || n >= PN) return NaN; const t1 = pT(n+1), t0 = pT(n-1); if (!isFinite(t1) || !isFinite(t0) || t1*t0 < 0) return NaN; /* undefined where T passes through infinity */ return (pU(n-1) - pU(n+1))/(t0 - t1)/PN; }
+function pRender(){
+  $('nUpOut').textContent = nUp + ' (N↓ = ' + (PN-nUp) + ')';
+  const U = pU(nUp), T = pT(nUp), Cn = pC(nUp);
+  $('pU').textContent = signed(U, 0); $('pM').textContent = signed(-U/PN, 2); { const om = Math.exp(pS(nUp)); $('pO').innerHTML = om < 1e6 ? Math.round(om).toLocaleString('en-US') : sciNum(om, 2); }
+  $('pS').textContent = pS(nUp).toFixed(2); $('pT').textContent = isFinite(T) ? signed(T, 2) : '∞'; $('pC').textContent = isFinite(Cn) && Math.abs(Cn) < 1e3 ? Math.abs(Cn).toFixed(3) : '—';
+  $('pV').textContent = U < 0 ? 'Positive temperature: fewer than half the dipoles point against the field.' : U === 0 ? 'Half up, half down: maximum entropy, infinite temperature.' : 'Negative temperature: adding energy would lower the entropy. This system is hotter than any positive temperature.';
+  const c = pmCtx; if (!c) return;
+  const W=640, H=320, ax = axes(c, W, H, [48,16,16,40], [-100,100], [0,75], [-100,-50,0,50,100], [0,20,40,60], [['U','i'],[' / ','r'],['μB','i']], [['S','i'],[' / ','r'],['k','i'],['B','sub']]);
+  c.fillStyle=C.a; c.globalAlpha=0.07; c.fillRect(ax.X(0), 16, ax.X(100)-ax.X(0), H-56); c.globalAlpha=1;
+  c.fillStyle=C.muted; c.font='12px '+SANS; c.textAlign='center'; c.fillText('T > 0', ax.X(-55), ax.Y(8)); c.fillText('T < 0', ax.X(55), ax.Y(8));
+  c.strokeStyle=C.acc; c.lineWidth=2.4; c.beginPath(); for (let n=PN;n>=0;n--){ const x = ax.X(pU(n)), y = ax.Y(pS(n)); n===PN?c.moveTo(x,y):c.lineTo(x,y); } c.stroke();
+  c.save(); c.beginPath(); c.rect(48,16,W-64,H-56); c.clip();
+  if (T === 0){ c.strokeStyle=C.ink; c.lineWidth=2.4; c.beginPath(); c.moveTo(ax.X(U), ax.Y(pS(nUp))); c.lineTo(ax.X(U), ax.Y(pS(nUp)+14)); c.stroke(); }
+  else if (isFinite(T)){ const sl = 1/T, s0 = pS(nUp); c.strokeStyle=C.ink; c.lineWidth=2.4; c.beginPath(); c.moveTo(ax.X(U-16), ax.Y(s0 - 16*sl)); c.lineTo(ax.X(U+16), ax.Y(s0 + 16*sl)); c.stroke(); }
+  else { c.strokeStyle=C.ink; c.lineWidth=2.4; c.beginPath(); c.moveTo(ax.X(U-16), ax.Y(pS(nUp))); c.lineTo(ax.X(U+16), ax.Y(pS(nUp))); c.stroke(); }
+  c.restore();
+  c.fillStyle=C.acc; c.beginPath(); c.arc(ax.X(U), ax.Y(pS(nUp)), 6, 0, 7); c.fill();
+  // spins
+  const s = spCtx; if (s){ const SW=640, SH=90; s.clearRect(0,0,SW,SH); s.fillStyle=C.surface; s.fillRect(0,0,SW,SH);
+    // a reproducible arrangement: which dipoles are down, spread evenly
+    const down = new Set(); for (let k=0;k<PN-nUp;k++) down.add(Math.floor((k + 0.5)*PN/(PN-nUp || 1)) % PN);
+    const cols = 50, cw = (SW-20)/cols;
+    for (let i=0;i<PN;i++){ const up = !down.has(i), x = 10 + (i%cols + 0.5)*cw, y = 24 + Math.floor(i/cols)*38, len = 13;
+      s.strokeStyle = up ? C.a : C.b; s.fillStyle = s.strokeStyle; s.lineWidth = 2;
+      s.beginPath(); s.moveTo(x, y + (up ? len : -len)); s.lineTo(x, y + (up ? -len*0.3 : len*0.3)); s.stroke();
+      s.beginPath(); s.moveTo(x, y + (up ? -len : len)); s.lineTo(x-4, y + (up ? -len*0.3 : len*0.3)); s.lineTo(x+4, y + (up ? -len*0.3 : len*0.3)); s.closePath(); s.fill(); }
+  }
+  analyticRender();
+}
+$('nUp').addEventListener('input', e => { nUp = +e.target.value; pRender(); });
+
+/* ---------- analytic charts with a shared marker ---------- */
+function analyticRender(){
+  const u = pU(nUp)/PN; // U / N mu B
+  const tm = u === 0 ? Infinity : 2/Math.log((1-u)/(1+u)); // kT/muB from the large-N formula
+  const W=440, H=280;
+  // T vs U
+  let c = aTCtx; if (c){ const ax = axes(c, W, H, [44,16,14,40], [-1,1], [-20,20], [-1,-0.5,0,0.5,1], [-20,-10,0,10,20], [['U','i'],[' / ','r'],['NμB','i']], [['k','i'],['B','sub'],['T','i'],[' / ','r'],['μB','i']]);
+    c.save(); c.beginPath(); c.rect(44,16,W-58,H-56); c.clip(); c.strokeStyle=C.acc; c.lineWidth=2.4;
+    [[-0.999,-0.0005],[0.0005,0.999]].forEach(([a,b]) => { c.beginPath(); for (let i=0;i<=300;i++){ const x = a + (b-a)*i/300, y = 2/Math.log((1-x)/(1+x)); i?c.lineTo(ax.X(x),ax.Y(y)):c.moveTo(ax.X(x),ax.Y(y)); } c.stroke(); });
+    if (isFinite(tm) && Math.abs(tm) < 20){ c.fillStyle=C.ink; c.beginPath(); c.arc(ax.X(u), ax.Y(tm), 5, 0, 7); c.fill(); } c.restore();
+    c.fillStyle=C.muted; c.font='12px '+SANS; c.textAlign='center'; c.fillText('(+)', ax.X(-0.6), ax.Y(8)); c.fillText('(−)', ax.X(0.6), ax.Y(-8)); }
+  // M vs T, both signs
+  c = aMCtx; if (c){ const ax = axes(c, W, H, [44,16,14,40], [-10,10], [-1.1,1.1], [-10,-5,0,5,10], [-1,0,1], [['k','i'],['B','sub'],['T','i'],[' / ','r'],['μB','i']], [['M','i'],[' / ','r'],['Nμ','i']]);
+    c.strokeStyle=C.acc; c.lineWidth=2.4; [[0.02,10],[-10,-0.02]].forEach(([a,b]) => { c.beginPath(); for (let i=0;i<=300;i++){ const t = a + (b-a)*i/300, m = Math.tanh(1/t); i?c.lineTo(ax.X(t),ax.Y(m)):c.moveTo(ax.X(t),ax.Y(m)); } c.stroke(); });
+    if (isFinite(tm) && Math.abs(tm) <= 10){ c.fillStyle=C.ink; c.beginPath(); c.arc(ax.X(tm), ax.Y(-u), 5, 0, 7); c.fill(); } }
+  // C and -U vs T
+  c = aCCtx; if (c){ const ax = axes(c, W, H, [44,16,14,40], [0,8], [0,1.05], [0,2,4,6,8], [0,0.25,0.5,0.75,1], [['k','i'],['B','sub'],['T','i'],[' / ','r'],['μB','i']], null);
+    c.strokeStyle=C.acc; c.lineWidth=2.4; c.beginPath(); for (let i=1;i<=300;i++){ const t = 8*i/300, x = 1/t, v = x*x/Math.pow(Math.cosh(x),2); i>1?c.lineTo(ax.X(t),ax.Y(v)):c.moveTo(ax.X(t),ax.Y(v)); } c.stroke();
+    c.strokeStyle=C.gold; c.setLineDash([6,4]); c.beginPath(); for (let i=1;i<=300;i++){ const t = 8*i/300, v = Math.tanh(1/t); i>1?c.lineTo(ax.X(t),ax.Y(v)):c.moveTo(ax.X(t),ax.Y(v)); } c.stroke(); c.setLineDash([]);
+    if (isFinite(tm) && tm > 0 && tm <= 8){ const x = 1/tm; c.fillStyle=C.ink; c.beginPath(); c.arc(ax.X(tm), ax.Y(x*x/Math.pow(Math.cosh(x),2)), 5, 0, 7); c.fill(); } }
+  // S vs x
+  c = aSCtx; if (c){ const ax = axes(c, W, H, [44,16,14,40], [0,5], [0,0.75], [0,1,2,3,4,5], [0,0.2,0.4,0.6], [['x','i'],[' = μB/','r'],['k','i'],['B','sub'],['T','i']], [['S','i'],[' / ','r'],['Nk','i'],['B','sub']]);
+    c.strokeStyle=C.acc; c.lineWidth=2.4; c.beginPath(); for (let i=0;i<=300;i++){ const x = 5*i/300 + 1e-9, s = Math.log(2*Math.cosh(x)) - x*Math.tanh(x); i?c.lineTo(ax.X(x),ax.Y(s)):c.moveTo(ax.X(x),ax.Y(s)); } c.stroke();
+    c.strokeStyle=C.muted; c.setLineDash([3,4]); c.lineWidth=1; c.beginPath(); c.moveTo(ax.X(0), ax.Y(Math.LN2)); c.lineTo(ax.X(5), ax.Y(Math.LN2)); c.stroke(); c.setLineDash([]);
+    c.fillStyle=C.muted; c.font='12px '+SANS; c.textAlign='right'; c.fillText('ln 2 ≈ 0.693', ax.X(5)-4, ax.Y(Math.LN2)-6);
+    if (isFinite(tm) && tm > 0){ const x = 1/tm; if (x <= 5){ c.fillStyle=C.ink; c.beginPath(); c.arc(ax.X(x), ax.Y(Math.log(2*Math.cosh(x)) - x*Math.tanh(x)), 5, 0, 7); c.fill(); } } }
+}
+
+/* ================= CURIE'S LAW ================= */
+let dip = 'e';
+const MU = {e: 5.788e-5, n: 5.788e-5/1836}; // eV/T; proton scale (nuclear magneton) for illustration
+function curRender(){
+  const B = +$('cB').value, T = Math.pow(10, +$('cT').value), x = MU[dip]*B/(kBeV*T);
+  document.querySelectorAll('[data-dip]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.dip === dip)));
+  $('cBOut').textContent = B.toFixed(1) + ' T'; $('cTOut').textContent = T >= 1 ? T.toPrecision(3) + ' K' : (T*1000).toPrecision(3) + ' mK';
+  $('cX').innerHTML = sciNum(x, 3); $('cM').innerHTML = x > 1e-3 ? Math.tanh(x).toPrecision(3) : sciNum(Math.tanh(x), 3); $('cC').innerHTML = x > 1e-3 ? x.toPrecision(3) : sciNum(x, 3);
+  const c = curCtx; if (!c) return;
+  const W=640, H=320, ax = axes(c, W, H, [48,16,16,40], [0,3], [0,1.1], [0,0.5,1,1.5,2,2.5,3], [0,0.25,0.5,0.75,1], [['μB','i'],[' / ','r'],['k','i'],['B','sub'],['T','i'],['  (∝ 1/','s'],['T','i'],[')','s']], [['M','i'],[' / ','r'],['Nμ','i']]);
+  c.save(); c.beginPath(); c.rect(48,16,W-64,H-56); c.clip();
+  c.strokeStyle=C.a; c.lineWidth=1.8; c.setLineDash([6,4]); c.beginPath(); c.moveTo(ax.X(0),ax.Y(0)); c.lineTo(ax.X(1.1),ax.Y(1.1)); c.stroke(); c.setLineDash([]);
+  c.strokeStyle=C.acc; c.lineWidth=2.6; c.beginPath(); for (let i=0;i<=200;i++){ const v = 3*i/200; i?c.lineTo(ax.X(v),ax.Y(Math.tanh(v))):c.moveTo(ax.X(v),ax.Y(0)); } c.stroke();
+  c.restore();
+  const xm = Math.min(x, 3); c.fillStyle=C.ink; c.beginPath(); c.arc(ax.X(xm), ax.Y(Math.tanh(xm)), 6, 0, 7); c.fill();
+  if (x < 0.02){ c.fillStyle=C.muted; c.font='12px '+SANS; c.textAlign='left'; c.fillText('deep in the Curie regime, near the origin', ax.X(0.05), ax.Y(0.1)); }
+}
+document.querySelectorAll('[data-dip]').forEach(b => b.addEventListener('click', () => { dip = b.dataset.dip; curRender(); }));
+$('cB').addEventListener('input', curRender); $('cT').addEventListener('input', curRender);
+
+/* ================= LAYOUT + LOOP ================= */
+let sCtx, anaCtx, uCtx, pmCtx, spCtx, aTCtx, aMCtx, aCCtx, aSCtx, curCtx;
+function layout(){
+  sCtx = fit($('sCanvas'), 640, 390); anaCtx = fit($('anaCanvas'), 900, 220); uCtx = fit($('uCanvas'), 640, 340);
+  pmCtx = fit($('pmCanvas'), 640, 320); spCtx = fit($('spinCanvas'), 640, 90);
+  aTCtx = fit($('aT'), 440, 280); aMCtx = fit($('aM'), 440, 280); aCCtx = fit($('aC'), 440, 280); aSCtx = fit($('aS'), 440, 280);
+  curCtx = fit($('curCanvas'), 640, 320);
+  redrawAll();
+}
+function redrawAll(){ sRender(); anaRender(); uRender(); wRender(); hRender(); lRender(); pRender(); curRender(); }
+let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(layout, 80); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { readColors(); redrawAll(); });
+let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.1, (now-last)/1000); last = now;
+  if (flowing){ flowing.t += dt; if (flowing.t > 0.08){ flowing.t = 0; const tot = q => SA(q) + SB(QT-q); const dir = tot(qA+1) > tot(qA) ? 1 : tot(qA-1) > tot(qA) ? -1 : 0; if (!dir){ flowing = null; } else { qA += dir; $('qA').value = qA; sRender(); } } }
+  requestAnimationFrame(loop);
+}
+layout();
+requestAnimationFrame(loop);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(redrawAll);
+})();
+</script>
+</body>
+</html>
